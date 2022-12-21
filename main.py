@@ -15,8 +15,8 @@ import requests
 import xmltodict
 
 currency_to_id = {
-    "AZN": "R01020A",
-    "BYR": "R01090B",
+    "AZN": "R01020",
+    "BYR": "R01090",
     "EUR": "R01239",
     "KGS": "R01370",
     "KZT": "R01335",
