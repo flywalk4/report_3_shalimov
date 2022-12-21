@@ -799,11 +799,11 @@ class CurrencyWorker:
         endYear = int(end[2])
         date_range = []
         while startMonth != endMonth + 1 or startYear != endYear:
-            date_range.append(f"{str(startMonth).zfill(2)}.{startYear}")
-            startMonth += 1
             if startMonth > 12:
                 startMonth = 1
                 startYear += 1
+            date_range.append(f"{str(startMonth).zfill(2)}.{startYear}")
+            startMonth += 1    
         return date_range
 
     def get_exchange_rate(self, currencies, start, end):
@@ -839,7 +839,7 @@ class CurrencyWorker:
         date_column = self.create_date_range(start, end)
         dataframe["date"] = date_column
         for currency in currencies:
-            column = list("none" for _ in range(len(date_column)))
+            column = list("" for _ in range(len(date_column)))
             for month in currencies[currency]:
                 date = month["Date"]
                 value = month["Value"]
@@ -850,10 +850,10 @@ class CurrencyWorker:
         return dataframe    
 
 if __name__ == "__main__":
-    file_name = input("Введите название файла: ")
-    chuncker.сsv_chuncker(file_name)
+    #file_name = input("Введите название файла: ")
+    #chuncker.сsv_chuncker(file_name)
     currencyWorker = CurrencyWorker()
     currencies, vacancies = currencyWorker.get_currencies(list(files("csv")))
-    currencies = currencyWorker.get_exchange_rate(currencies, vacancies[0].date_to_string(), vacancies[-1].date_to_string())
-    df = currencyWorker.create_dataframe(currencies, vacancies[0].date_to_string(), vacancies[-1].date_to_string())
+    currencies = currencyWorker.get_exchange_rate(currencies, f"01.01.{vacancies[0].date_get_year()}", f"10.12.{vacancies[-1].date_get_year()}")
+    df = currencyWorker.create_dataframe(currencies, f"01.01.{vacancies[0].date_get_year()}", f"10.12.{vacancies[-1].date_get_year()}")
     df.to_csv("currencies.csv", index=False)
