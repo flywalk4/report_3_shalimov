@@ -392,6 +392,21 @@ class Vacancy:
         date_string = splitted_date[2] + "." + splitted_date[1] + "." + splitted_date[0]
         return date_string
 
+    def get_month_year(self):
+        """Переводит аттрибут published_at класса Vacancy в формат dd.mm.yyyy
+
+            Returns:
+                str: Дата в формате dd.mm.yyyy
+            
+        >>> Vacancy("x", "<br><b>x</b>yz</br>", 'z', "noExperience", "true", "x", Salary("100", "2000", "true", "RUR"), "x", "2007-12-03T17:40:09+0300").date_to_string()
+        '03.12.2007'
+        >>> Vacancy("x", "<br><b>x</b>yz</br>", 'z', "noExperience", "true", "x", Salary("100", "2000", "true", "RUR"), "x", "2012-10-03T17:12:09+0300").date_to_string()
+        '03.10.2012'
+        """
+        splitted_date = self.published_at.split("T")[0].split("-")
+        date_string = splitted_date[0] + "-" + splitted_date[1] 
+        return date_string
+
     def date_get_year(self):
         """Получить год публикации вакансии
 
@@ -763,7 +778,6 @@ class CurrencyWorker:
 
             Args:
                 file_names(list): Названия файлов
-                prof_name (str): Имя выбранной профессии
         """
         def read_get_data(file_name):
             csvReader = CSVReader()
@@ -802,7 +816,7 @@ class CurrencyWorker:
             if startMonth > 12:
                 startMonth = 1
                 startYear += 1
-            date_range.append(f"{str(startMonth).zfill(2)}.{startYear}")
+            date_range.append(f"{startYear}-{str(startMonth).zfill(2)}")
             startMonth += 1    
         return date_range
 
@@ -841,19 +855,67 @@ class CurrencyWorker:
         for currency in currencies:
             column = list("" for _ in range(len(date_column)))
             for month in currencies[currency]:
-                date = month["Date"]
+                date = month["Date"].split(".")
+                date = date[1]+"-"+date[0]
                 value = month["Value"]
                 nominal = month["Nominal"]
                 actual_value = float(value.replace(',','.')) / float(nominal)
                 column[date_column.index(date)] = actual_value
             dataframe[currency] = column
-        return dataframe    
+        return dataframe.astype({'date': str})   
+
+def main_futures(file_names):
+    """Обрабатывает и считывает вакансии в многопоточном режиме
+        Args:
+            file_names(list): Названия файлов
+    """
+    def read_get_data(file_name):
+        csvReader = CSVReader()
+        vacancies = csvReader.get_vacancies(file_name)
+        return vacancies[1]
+
+    total_vacancies = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        queue = {executor.submit(read_get_data, file_name): file_name for file_name in file_names}
+        for answer in concurrent.futures.as_completed(queue):
+            result = answer.result()
+            total_vacancies += result
+    return total_vacancies
+       
+def form_new_line(currencies, vacancy):
+    
+    date = vacancy.get_month_year()
+    if vacancy.salary.salary_currency == "RUR":
+        exchange_rate = 1
+    elif vacancy.salary.salary_currency in currencies.columns:
+        exchange_rate = float(currencies.loc[((currencies['date'])) == date][vacancy.salary.salary_currency])
+    else:
+        return f"\n{vacancy.name},,{vacancy.area_name},{vacancy.published_at}"
+
+    if vacancy.salary.salary_from == -1 and vacancy.salary.salary_to == -1:
+        return f"\n{vacancy.name},,{vacancy.area_name},{vacancy.published_at}"
+
+    if vacancy.salary.salary_from == -1:
+        return f"\n{vacancy.name},{exchange_rate * vacancy.salary.salary_to},{vacancy.area_name},{vacancy.published_at}"
+
+    if vacancy.salary.salary_to == -1:
+        return f"\n{vacancy.name},{exchange_rate * vacancy.salary.salary_from},{vacancy.area_name},{vacancy.published_at}"
+
+    return f"\n{vacancy.name},{exchange_rate * (vacancy.salary.salary_to + vacancy.salary.salary_from) / 2},{vacancy.area_name},{vacancy.published_at}"
 
 if __name__ == "__main__":
     #file_name = input("Введите название файла: ")
     #chuncker.сsv_chuncker(file_name)
     currencyWorker = CurrencyWorker()
-    currencies, vacancies = currencyWorker.get_currencies(list(files("csv")))
-    currencies = currencyWorker.get_exchange_rate(currencies, f"01.01.{vacancies[0].date_get_year()}", f"10.12.{vacancies[-1].date_get_year()}")
-    df = currencyWorker.create_dataframe(currencies, f"01.01.{vacancies[0].date_get_year()}", f"10.12.{vacancies[-1].date_get_year()}")
-    df.to_csv("currencies.csv", index=False)
+    vacancies = main_futures(list(files("csv")))
+    df = pd.read_csv("currencies.csv")
+    p = Pool(cpu_count() - 1)
+    lines = p.map(partial(form_new_line, df), vacancies)
+    with open('out.csv', 'w', encoding="utf-8-sig") as f_out:
+        f_out.write("name,salary,area_name,published_at")
+        f_out.writelines(lines)
+        f_out.close()
+    #currencies, vacancies = currencyWorker.get_currencies(list(files("csv")))
+    #currencies = currencyWorker.get_exchange_rate(currencies, f"01.01.{vacancies[0].date_get_year()}", f"10.12.{vacancies[-1].date_get_year()}")
+    #df = currencyWorker.create_dataframe(currencies, f"01.01.{vacancies[0].date_get_year()}", f"10.12.{vacancies[-1].date_get_year()}")
+    #df.to_csv("currencies.csv", index=False)
