@@ -890,31 +890,35 @@ def form_new_line(currencies, vacancy):
     elif vacancy.salary.salary_currency in currencies.columns:
         exchange_rate = float(currencies.loc[((currencies['date'])) == date][vacancy.salary.salary_currency])
     else:
-        return f"\n{vacancy.name},,{vacancy.area_name},{vacancy.published_at}"
+        return [vacancy.name,"",vacancy.area_name,vacancy.published_at]
 
     if vacancy.salary.salary_from == -1 and vacancy.salary.salary_to == -1:
-        return f"\n{vacancy.name},,{vacancy.area_name},{vacancy.published_at}"
+        return [vacancy.name,"",vacancy.area_name,vacancy.published_at]
 
     if vacancy.salary.salary_from == -1:
-        return f"\n{vacancy.name},{exchange_rate * vacancy.salary.salary_to},{vacancy.area_name},{vacancy.published_at}"
-
+        return [vacancy.name,exchange_rate * vacancy.salary.salary_to,vacancy.area_name,vacancy.published_at]
+# 
     if vacancy.salary.salary_to == -1:
-        return f"\n{vacancy.name},{exchange_rate * vacancy.salary.salary_from},{vacancy.area_name},{vacancy.published_at}"
+        return [vacancy.name,exchange_rate * vacancy.salary.salary_from,vacancy.area_name,vacancy.published_at]
 
-    return f"\n{vacancy.name},{exchange_rate * (vacancy.salary.salary_to + vacancy.salary.salary_from) / 2},{vacancy.area_name},{vacancy.published_at}"
+    return [vacancy.name,exchange_rate * (vacancy.salary.salary_to + vacancy.salary.salary_from) / 2,vacancy.area_name,vacancy.published_at]
 
 if __name__ == "__main__":
-    #file_name = input("Введите название файла: ")
+    file_name = input("Введите название файла: ")
     #chuncker.сsv_chuncker(file_name)
     currencyWorker = CurrencyWorker()
     vacancies = main_futures(list(files("csv")))
     df = pd.read_csv("currencies.csv")
-    p = Pool(cpu_count() - 1)
+    p = Pool(cpu_count())
     lines = p.map(partial(form_new_line, df), vacancies)
-    with open('out.csv', 'w', encoding="utf-8-sig") as f_out:
-        f_out.write("name,salary,area_name,published_at")
-        f_out.writelines(lines)
-        f_out.close()
+    data = {'name': [], 'salary': [], 'area_name': [], 'published_at': []}
+    for line in lines:
+        data["name"].append(line[0])
+        data["salary"].append(line[1])
+        data["area_name"].append(line[2])
+        data["published_at"].append(line[3])
+    df = pd.DataFrame(data=data)
+    df.to_csv("out.csv",index=False)
     #currencies, vacancies = currencyWorker.get_currencies(list(files("csv")))
     #currencies = currencyWorker.get_exchange_rate(currencies, f"01.01.{vacancies[0].date_get_year()}", f"10.12.{vacancies[-1].date_get_year()}")
     #df = currencyWorker.create_dataframe(currencies, f"01.01.{vacancies[0].date_get_year()}", f"10.12.{vacancies[-1].date_get_year()}")
