@@ -50,7 +50,7 @@ def input_datetime():
 
 def get_day_range(date : datetime):
     day_range = []
-    for hour in range(1,24):
+    for hour in range(1,25):
         if hour == 24:
             day_range.append([datetime.datetime(date.year, date.month, date.day, 23, 0, 0),
                             datetime.datetime(date.year, date.month, date.day, 23, 59, 59)])
@@ -79,7 +79,7 @@ def write_vacancies(items):
     if len(items) == 0:
         print("Нет данных")
         return
-    myFile = open('vacancies.csv', 'w', encoding="UTF-8")
+    myFile = open('vacancies_from_api.csv', 'w', encoding="UTF-8")
     writer = csv.writer(myFile, lineterminator='\n')
     writer.writerow(['name', 'salary_from', 'salary_to', 'salary_currency', 'area_name', 'published_at'])
     for item in items:
