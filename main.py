@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from time import time
 import requests
 import xmltodict
+import sqlite3
 
 currency_to_id = {
     "AZN": "R01020",
@@ -904,22 +905,23 @@ def form_new_line(currencies, vacancy):
     return [vacancy.name,exchange_rate * (vacancy.salary.salary_to + vacancy.salary.salary_from) / 2,vacancy.area_name,vacancy.published_at]
 
 if __name__ == "__main__":
-    file_name = input("Введите название файла: ")
+    #file_name = input("Введите название файла: ")
     #chuncker.сsv_chuncker(file_name)
     currencyWorker = CurrencyWorker()
-    vacancies = main_futures(list(files("csv")))
-    df = pd.read_csv("currencies.csv")
-    p = Pool(cpu_count())
-    lines = p.map(partial(form_new_line, df), vacancies)
-    data = {'name': [], 'salary': [], 'area_name': [], 'published_at': []}
-    for line in lines:
-        data["name"].append(line[0])
-        data["salary"].append(line[1])
-        data["area_name"].append(line[2])
-        data["published_at"].append(line[3])
-    df = pd.DataFrame(data=data)
-    df.to_csv("out.csv",index=False)
-    #currencies, vacancies = currencyWorker.get_currencies(list(files("csv")))
-    #currencies = currencyWorker.get_exchange_rate(currencies, f"01.01.{vacancies[0].date_get_year()}", f"10.12.{vacancies[-1].date_get_year()}")
-    #df = currencyWorker.create_dataframe(currencies, f"01.01.{vacancies[0].date_get_year()}", f"10.12.{vacancies[-1].date_get_year()}")
-    #df.to_csv("currencies.csv", index=False)
+    #vacancies = main_futures(list(files("csv")))
+    #df = pd.read_csv("currencies.csv")
+    #p = Pool(cpu_count())
+    #lines = p.map(partial(form_new_line, df), vacancies)
+    #data = {'name': [], 'salary': [], 'area_name': [], 'published_at': []}
+    #for line in lines:
+    #    data["name"].append(line[0])
+    #    data["salary"].append(line[1])
+    #    data["area_name"].append(line[2])
+    #    data["published_at"].append(line[3])
+    #df = pd.DataFrame(data=data)
+    #df.to_csv("out.csv",index=False)
+    currencies, vacancies = currencyWorker.get_currencies(list(files("csv")))
+    currencies = currencyWorker.get_exchange_rate(currencies, f"01.01.{vacancies[0].date_get_year()}", f"10.12.{vacancies[-1].date_get_year()}")
+    df = currencyWorker.create_dataframe(currencies, f"01.01.{vacancies[0].date_get_year()}", f"10.12.{vacancies[-1].date_get_year()}")
+    conn = sqlite3.connect('currencies.sqlite')
+    df.to_sql('currencies',con= conn, if_exists='replace', index=False)
